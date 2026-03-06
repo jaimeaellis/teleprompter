@@ -181,6 +181,7 @@
     .s1 { color: #4fc3f7; }
     .s2 { color: #81c784; }
     .narrator { color: #e0e0e0; }
+    .pause { color: #ffcc00; margin: 0 0.5em; }
 
     /* Fade-out top / bottom */
     #scroll-container::before,
@@ -765,7 +766,10 @@ and we’ll see you next time.</textarea>
       const tagName = speaker === 's1' ? s1 : speaker === 's2' ? s2 : null;
       html += `<div class="block ${speaker}">`;
       if (tagName) html += `<span class="speaker-tag">${esc(tagName)}</span>`;
-      html += lines.map(l => `<span class="line-text">${esc(l)}</span>`).join('');
+      html += lines.map(l => {
+        let modified = l.replace(/\[pause\]/g, '<span class="pause">[pause]</span>');
+        return `<span class="line-text">${modified}</span>`;
+      }).join('');
       html += `</div>`;
     }
 
