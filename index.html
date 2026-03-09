@@ -298,223 +298,37 @@
     <span class="hint">
       Use <strong>Shani:</strong> or <strong>Drew:</strong> to change speaker. Lines without a prefix continue under the current speaker.
     </span>
-    <textarea id="script" spellcheck="false">SHANI:
-Hi everyone,
+    <textarea id="script" spellcheck="false">Hi everyone, and welcome to The Change Makers. This is a new conversation series where we get to know the people behind the initiatives making a real difference across our member companies. In each episode, we hear directly from industry leaders about what they are building, why it matters, and how their work is helping move our industry forward. Our hope is that these conversations leave you inspired, informed, and maybe even sparked with a few ideas of your own.
 
-and welcome to
-The Change Makers.
+I'm Shani Armon, Chief Operating Officer at IRI, and I'm excited to kick things off today with Drew Farrell, Senior Vice President of Retirement Sales, Distribution, and Marketing at Symetra Financial.
 
-This is a new conversation series
-where we get to know the people
-behind the initiatives
+Today we'll be talking about the Symetra Women's Action Group, fondly known as SWAG. Drew founded the coalition in 2023 and now serves as its Chief Allyship Officer, which I have to say is an awesome title. Drew, thanks for joining us today. Let's get started.
 
-making a real difference
-across our member companies.
+Question 1: Talk to us about SWAG's origin story, how it all began, and the current mission.
 
-In each episode,
+[Pause for Drew's response]
 
-we hear directly from industry leaders
+Question 2: That's a great foundation � bringing people together around shared experiences and turning conversation into action. On a more personal note, what has been your proudest moment working on SWAG?
 
-about what they are building,
+[Pause for Drew's response]
 
-why it matters,
+Question 3: Those are meaningful outcomes, and it's great to see those conversations turn into tangible resources for the industry. But work like this rarely happens without a few challenges along the way. What are some of the impediments or obstacles that Symetra ran into while pursuing this project?
 
-and how their work is helping move
-our industry forward.
+[Pause for Drew's response]
 
-Our hope is that these conversations
+Question 4: I really appreciate your honesty there. Let's shift gears for a moment and talk about why Symetra is so well positioned to lead this kind of effort. What makes Symetra uniquely positioned to lead a program like this?
 
-leave you inspired,
+[Pause for Drew's response]
 
-informed,
+Question 5: Those are impressive examples of leadership in action. So how do you actually measure success with SWAG, and what impact are you hoping to see over the long term?
 
-and maybe even sparked
-with a few ideas of your own.
+[Pause for Drew's response]
 
-I'm Shani Armon,
+Question 6: It's incredible to see how something that started as a simple idea has grown into such a meaningful initiative. Let's end with a fun one. If SWAG were handed one hundred million dollars, how would Symetra put it to use?
 
-Chief Operating Officer at IRI.
+[Pause for Drew's response]
 
-And I'm excited to kick things off today
-
-with Drew Farrell,
-
-Senior Vice President
-of Retirement Sales, Distribution,
-and Marketing
-
-at Symetra Financial.
-
-Today we'll be talking about
-
-the Symetra Women's Action Group,
-
-fondly known as SWAG.
-
-Drew founded the coalition in 2023
-
-and now serves as its
-Chief Allyship Officer,
-
-which I have to say
-
-is an awesome title.
-
-Drew,
-
-thanks for joining us today.
-
-Let's get started.
-
-SHANI:
-Tell us about the
-Symetra Women's Action Group
-
-and how it started.
-
-SHANI:
-That's a great foundation,
-
-bringing people together
-
-around shared experiences
-
-and turning conversation into action.
-
-On a more personal note�
-
-SHANI:
-What has been your proudest moment
-working on SWAG?
-
-SHANI:
-That's powerful,
-
-especially hearing how personal
-this work is for you.
-
-Building on that,
-
-I'd love to talk about
-the realities behind the progress.
-
-SHANI:
-What is a lesson
-
-Symetra learned the hard way
-
-while pursuing this initiative?
-
-SHANI:
-I really appreciate
-your honesty there.
-
-Let's shift gears for a moment
-
-and talk about why Symetra
-
-is so well positioned
-
-to lead this kind of effort.
-
-SHANI:
-What makes Symetra uniquely positioned
-
-to lead a program like this?
-
-SHANI:
-Those are impressive examples
-
-of leadership in action.
-
-SHANI:
-How do you measure success
-with SWAG?
-
-And what impact
-
-do you hope to see
-over the long term?
-
-SHANI:
-It's clear this effort
-
-has gained real momentum.
-
-I'm curious about something.
-
-SHANI:
-What unexpected opportunities
-
-have come from this work?
-
-SHANI:
-It's incredible to see
-
-how something that started
-
-as a simple idea
-
-has grown into
-such a meaningful initiative.
-
-SHANI:
-Let's end
-with a fun one.
-
-If SWAG were handed
-
-one hundred million dollars,
-
-how would Symetra
-put it to use?
-
-SHANI:
-Drew,
-
-thank you for sharing your story
-
-and for the important work
-
-you're leading through SWAG
-
-to advance mentorship
-
-and allyship
-
-across our industry.
-
-And thank you to everyone
-
-for joining us
-
-for this episode
-of The Change Makers.
-
-We hope today's conversation
-
-sparked a few ideas
-
-and showed how meaningful change
-
-often starts with people
-
-who are willing
-to take action.
-
-Be sure to join us
-
-for future episodes
-
-as we continue highlighting
-
-leaders and initiatives
-
-moving our industry forward.
-
-Thanks again,
-
-and we'll see you next time.</textarea>
+Closing: Drew, thank you for sharing your story and for the important work you're leading through SWAG to advance mentorship and allyship across our industry. And thank you to everyone for joining us for this episode of The Change Makers. We hope today's conversation sparked a few ideas and showed how meaningful change often starts with people who are willing to take action. Be sure to join us for future episodes as we continue highlighting leaders and initiatives moving our industry forward. Thanks again, and we'll see you next time.</textarea>
   </div>
 
   <div style="display:flex;gap:0.75rem;">
@@ -648,7 +462,7 @@ and we'll see you next time.</textarea>
       html += `<div class="block ${speaker}">`;
       if (tagName) html += `<span class="speaker-tag">${esc(tagName)}</span>`;
       html += lines.map(l => {
-        let modified = l.replace(/\[pause\]/g, '<span class="pause">[pause]</span>');
+        let modified = l.replace(/\[pause[^\]]*\]/gi, '<span class="pause">$&</span>');
         return `<span class="line-text">${modified}</span>`;
       }).join('');
       html += `</div>`;
@@ -959,4 +773,6 @@ and we'll see you next time.</textarea>
 </script>
 </body>
 </html>
+
+
 
