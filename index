@@ -1,0 +1,1444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teleprompter</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #1a1a1a;
+      color: #e0e0e0;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── SETUP SCREEN ── */
+    #setup {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      padding: 2rem;
+      gap: 1.5rem;
+      overflow-y: auto;
+    }
+
+    #setup h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+
+    .speaker-row {
+      display: flex;
+      gap: 1rem;
+      width: 100%;
+      max-width: 700px;
+    }
+
+    .speaker-block {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .speaker-block label {
+      font-size: 0.85rem;
+      opacity: 0.7;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .speaker-block input {
+      padding: 0.6rem 0.9rem;
+      border-radius: 6px;
+      border: 2px solid transparent;
+      font-size: 1rem;
+      background: #2c2c2c;
+      color: #fff;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    #s1name { border-color: #4fc3f7; }
+    #s2name { border-color: #81c784; }
+
+    .script-area {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      width: 100%;
+      max-width: 700px;
+    }
+
+    .script-area label {
+      font-size: 0.85rem;
+      opacity: 0.7;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .hint {
+      font-size: 0.78rem;
+      opacity: 0.5;
+      font-style: italic;
+    }
+
+    #script {
+      width: 100%;
+      height: 260px;
+      padding: 0.8rem 1rem;
+      border-radius: 8px;
+      border: 1px solid #444;
+      background: #2c2c2c;
+      color: #e0e0e0;
+      font-size: 0.95rem;
+      font-family: 'Courier New', monospace;
+      resize: vertical;
+      outline: none;
+      line-height: 1.5;
+    }
+
+    #script:focus { border-color: #666; }
+
+    #startBtn {
+      padding: 0.75rem 2.5rem;
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      border: none;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #4fc3f7, #81c784);
+      color: #111;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+
+    #startBtn:hover { opacity: 0.9; transform: scale(1.02); }
+
+    #saveBtn, #loadLabel {
+      padding: 0.75rem 1.5rem;
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      border: 2px solid #555;
+      border-radius: 8px;
+      background: #2c2c2c;
+      color: #e0e0e0;
+      cursor: pointer;
+      transition: background 0.15s;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+    }
+    #saveBtn:hover, #loadLabel:hover { background: #3a3a3a; }
+
+    /* ── TELEPROMPTER SCREEN ── */
+    #prompter {
+      display: none;
+      flex-direction: column;
+      height: 100vh;
+      background: #0d0d0d;
+      position: relative;
+    }
+
+    #scroll-container {
+      flex: 1;
+      overflow: hidden;
+      position: relative;
+    }
+
+    #scroll-content {
+      padding: 40vh 10vw 50vh;
+      line-height: 1.7;
+      font-size: 2rem;
+      will-change: transform;
+    }
+
+    .block {
+      margin-bottom: 1.6em;
+    }
+
+    .speaker-tag {
+      font-size: 0.6em;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      opacity: 0.55;
+      margin-bottom: 0.15em;
+      display: block;
+    }
+
+    .line-text {
+      display: block;
+    }
+
+    .s1 { color: #4fc3f7; }
+    .s2 { color: #81c784; }
+    .narrator { color: #e0e0e0; }
+    .pause { color: #ffcc00; margin: 0 0.5em; }
+
+    /* Fade-out top / bottom */
+    #scroll-container::before,
+    #scroll-container::after {
+      content: '';
+      position: absolute;
+      left: 0; right: 0;
+      height: 18vh;
+      z-index: 2;
+      pointer-events: none;
+    }
+    #scroll-container::before {
+      top: 0;
+      background: linear-gradient(to bottom, #0d0d0d, transparent);
+    }
+    #scroll-container::after {
+      bottom: 0;
+      background: linear-gradient(to top, #0d0d0d, transparent);
+    }
+
+    /* Centre line indicator */
+    #centre-line {
+      position: absolute;
+      top: 50%;
+      left: 0; right: 0;
+      transform: translateY(-50%);
+      height: 3px;
+      background: rgba(255,255,255,0.08);
+      z-index: 3;
+      pointer-events: none;
+    }
+
+    /* ── CONTROLS BAR ── */
+    #controls {
+      display: flex;
+      align-items: center;
+      gap: 1.2rem;
+      padding: 0.6rem 1.2rem;
+      background: rgba(0,0,0,0.75);
+      border-top: 1px solid #333;
+      flex-wrap: wrap;
+      transition: opacity 0.4s;
+      z-index: 10;
+    }
+
+    #controls.hidden { opacity: 0; pointer-events: none; }
+
+    .ctrl-btn {
+      padding: 0.35rem 0.9rem;
+      border-radius: 5px;
+      border: 1px solid #555;
+      background: #2a2a2a;
+      color: #e0e0e0;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+    .ctrl-btn:hover { background: #3a3a3a; }
+    .ctrl-btn.active { background: #4fc3f7; color: #111; border-color: #4fc3f7; }
+
+    .ctrl-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8rem;
+      opacity: 0.85;
+    }
+
+    .ctrl-group input[type=range] {
+      width: 90px;
+      accent-color: #4fc3f7;
+      cursor: pointer;
+    }
+
+    .ctrl-sep {
+      width: 1px;
+      height: 24px;
+      background: #444;
+    }
+
+    #playBtn { min-width: 80px; }
+
+    .kbd-hint {
+      font-size: 0.7rem;
+      opacity: 0.4;
+      margin-left: auto;
+    }
+
+    /* ── FULLSCREEN tweaks ── */
+    :fullscreen #controls { position: sticky; bottom: 0; }
+    :-webkit-full-screen #controls { position: sticky; bottom: 0; }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════ SETUP SCREEN ══════════════ -->
+<div id="setup">
+  <h1>Teleprompter</h1>
+
+  <div class="speaker-row">
+    <div class="speaker-block">
+      <label>Speaker 1 name</label>
+      <input id="s1name" type="text" value="Shani" spellcheck="false">
+    </div>
+    <div class="speaker-block">
+      <label>Speaker 2 name</label>
+      <input id="s2name" type="text" value="Drew" spellcheck="false">
+    </div>
+  </div>
+
+  <div class="script-area">
+    <label>Script</label>
+    <span class="hint">
+      Use <strong>Shani:</strong> or <strong>Drew:</strong> to change speaker. Lines without a prefix continue under the current speaker.
+    </span>
+    <textarea id="script" spellcheck="false">SWAG Interview Teleprompter Script
+
+OPENING
+
+SHANI:
+Hi everyone,
+
+and welcome to
+The Change Makers.
+
+This is a new conversation series
+where we get to know the people
+behind the initiatives
+
+making a real difference
+across our member companies.
+
+In each episode,
+
+we hear directly from industry leaders
+
+about what they are building,
+
+why it matters,
+
+and how their work is helping move
+our industry forward.
+
+Our hope is that these conversations
+
+leave you inspired,
+
+informed,
+
+and maybe even sparked
+with a few ideas of your own.
+
+I'm Shani Armon,
+
+Chief Operating Officer at IRI.
+
+And I'm excited to kick things off today
+
+with Drew Farrell,
+
+Senior Vice President
+of Retirement Sales, Distribution,
+and Marketing
+
+at Symetra Financial.
+
+Today we'll be talking about
+
+the Symetra Women's Action Group,
+
+fondly known as SWAG.
+
+Drew founded the coalition in 2023
+
+and now serves as its
+Chief Allyship Officer,
+
+which I have to say
+
+is an awesome title.
+
+Drew,
+
+thanks for joining us today.
+
+Let's get started.
+
+QUESTION 1
+
+SHANI:
+Tell us about the
+Symetra Women's Action Group
+
+and how it started.
+
+[PAUSE � DREW]
+
+DREW:
+The Symetra Women's Action Group,
+
+or SWAG,
+
+started in 2022.
+
+It was born from a desire
+
+to build a coalition
+of female leadership
+
+within Symetra's retirement division
+
+and across the broader
+financial services industry.
+
+The goal was to create a space
+
+where women could share experiences,
+
+discuss challenges,
+
+and identify opportunities
+to take meaningful action.
+
+We wanted conversations
+
+that led to solutions.
+
+Solutions that could help accelerate
+
+existing pathways
+for women to advance.
+
+From the beginning,
+
+we were intentional.
+
+We understood that
+
+we could not be everything
+to everyone.
+
+But when we show up,
+
+we show up big,
+
+we show up bold,
+
+and we show up brave.
+
+TRANSITION
+
+SHANI:
+That's a great foundation,
+
+bringing people together
+
+around shared experiences
+
+and turning conversation into action.
+
+On a more personal note�
+
+QUESTION 2
+
+SHANI:
+What has been your proudest moment
+working on SWAG?
+
+[PAUSE � DREW]
+
+DREW:
+One of the moments
+I'm most proud of
+
+is seeing these conversations
+
+turn into real outcomes.
+
+For example,
+
+we intentionally created
+the Mentorship Moments book.
+
+It captures powerful
+and inspiring stories
+
+from our distribution partners
+
+and from Symetra leaders.
+
+Stories that highlight
+real experiences
+
+and lessons others
+can learn from.
+
+Another milestone
+
+was our partnership with IRI
+
+to conduct allyship research
+
+and develop the
+Allyship Guide.
+
+That work involved
+multiple phases.
+
+We gathered insights
+
+through interviews
+during SWAG meetings,
+
+conducted surveys
+at the IRI conference,
+
+and analyzed the data
+
+to identify meaningful patterns.
+
+All of that work
+
+ultimately came together
+
+in the Allyship Guide.
+
+A resource grounded
+in real research
+
+and real experiences.
+
+Bringing people together
+is important.
+
+But intentional follow up
+
+is just as important.
+
+We wanted to provide something
+
+people did not already have.
+
+And both the Allyship Guide
+
+and the Mentorship Moments book
+
+are great examples
+of that.
+
+TRANSITION
+
+SHANI:
+That's powerful,
+
+especially hearing how personal
+this work is for you.
+
+Building on that,
+
+I'd love to talk about
+the realities behind the progress.
+
+QUESTION 3
+
+SHANI:
+What is a lesson
+
+Symetra learned the hard way
+
+while pursuing this initiative?
+
+[PAUSE � DREW]
+
+DREW:
+One lesson we learned quickly
+
+is that you cannot solve
+every challenge at once.
+
+There are many important issues
+to address.
+
+So you have to identify
+where you can make
+the biggest difference.
+
+And focus your efforts there.
+
+If you leave something better
+
+than you found it,
+
+that is meaningful progress.
+
+Another challenge
+
+is balancing inclusivity
+
+with creating a safe space
+
+for honest conversation.
+
+We want people
+to feel welcome.
+
+But we also want them
+to feel comfortable
+
+sharing their stories.
+
+Another important point
+
+is understanding the mission.
+
+SWAG is intentionally
+
+distribution-partner focused.
+
+Our partners in the field
+
+are the center
+of these conversations.
+
+The home office
+plays an important role.
+
+But the focus
+is supporting our partners.
+
+TRANSITION
+
+SHANI:
+I really appreciate
+your honesty there.
+
+Let's shift gears for a moment
+
+and talk about why Symetra
+
+is so well positioned
+
+to lead this kind of effort.
+
+QUESTION 4
+
+SHANI:
+What makes Symetra uniquely positioned
+
+to lead a program like this?
+
+[PAUSE � DREW]
+
+DREW:
+At Symetra,
+
+our values guide
+how we operate.
+
+Value.
+
+Transparency.
+
+And Sustainability.
+
+Those principles
+
+are deeply embedded
+
+in the culture
+of the company.
+
+Within the retirement division,
+
+we have also seen strong
+
+representation of women.
+
+For example,
+
+about thirty percent
+of our wholesalers
+
+across both channels
+
+are women.
+
+And roughly thirty percent
+of President's Club winners
+
+are women as well.
+
+Including Lydia,
+
+Tammy,
+
+and Dayna.
+
+We also have strong
+female leadership
+
+across several areas
+
+including internal sales,
+
+bank and wire channels,
+
+and the independent channel.
+
+All of this reflects
+
+a broader commitment
+
+to inclusion
+
+and equitable opportunity.
+
+And that commitment
+
+is reinforced by our
+corporate strategy,
+
+known as
+Symetra Empowers.
+
+TRANSITION
+
+SHANI:
+Those are impressive examples
+
+of leadership in action.
+
+QUESTION 5
+
+SHANI:
+How do you measure success
+with SWAG?
+
+And what impact
+
+do you hope to see
+long term?
+
+[PAUSE � DREW]
+
+DREW:
+One interesting signal
+of success
+
+is when others
+in the industry
+
+begin creating programs
+
+inspired by SWAG.
+
+As the saying goes,
+
+imitation is the sincerest
+form of flattery.
+
+We also track engagement.
+
+Participation continues to grow.
+
+Meeting attendance
+continues to increase.
+
+And many partners now ask
+for the dates in advance
+
+so they can avoid
+scheduling conflicts.
+
+We've also created
+several key resources.
+
+Including the
+Mentorship Moments Journal
+
+published in 2024.
+
+And the
+Allyship Guide
+
+developed in partnership
+with IRI
+
+and published in 2025.
+
+Ultimately,
+
+the goal is cultural change.
+
+A culture where mentorship
+
+and allyship
+
+are embedded
+
+in how organizations operate.
+
+When we see more women
+
+represented in leadership,
+
+in executive roles,
+
+and in boardrooms,
+
+that's when we know
+
+this work
+is making a real impact.
+
+TRANSITION
+
+SHANI:
+It's clear this effort
+
+has gained real momentum.
+
+I'm curious about something.
+
+QUESTION 6
+
+SHANI:
+What unexpected opportunities
+
+have come from this work?
+
+[PAUSE � DREW]
+
+DREW:
+One unexpected outcome
+
+is the number of resources
+
+that have emerged
+from these conversations.
+
+Through our work,
+
+we developed materials
+
+focused on mentorship
+
+and allyship
+
+across financial services.
+
+Those resources
+
+are now available
+
+to anyone in the industry.
+
+We didn't initially set out
+
+to create guides
+or publications.
+
+But the themes
+that surfaced
+
+during our annual coalition meetings
+
+naturally evolved
+
+into something bigger.
+
+Another opportunity
+
+has been our partnership
+with IRI.
+
+Working together
+
+expanded our reach
+
+far beyond
+what we originally imagined.
+
+And Shani,
+
+your involvement
+in the coalition
+
+has played an important role
+
+in that progress.
+
+TRANSITION
+
+SHANI:
+It's incredible to see
+
+how something that started
+
+as a simple idea
+
+has grown into
+such a meaningful initiative.
+
+QUESTION 7
+
+SHANI:
+Let's end
+with a fun one.
+
+If SWAG were handed
+
+one hundred million dollars,
+
+how would Symetra
+put it to use?
+
+[PAUSE � DREW]
+
+DREW:
+We would probably start
+
+a SWAG Academy.
+
+It would focus on developing
+
+future male allies
+
+and emerging female leaders
+
+in financial services.
+
+The program would provide
+
+mentorship,
+
+leadership training,
+
+and exposure
+
+to careers in the industry.
+
+We could even partner
+
+with universities
+
+like Wharton
+
+or Cornell
+
+to develop certificate programs
+
+focused on mentorship
+
+and allyship
+
+within financial services.
+
+And honestly,
+
+we would love
+
+to take the program
+
+on the road.
+
+CLOSING
+
+SHANI:
+Drew,
+
+thank you for sharing your story
+
+and for the important work
+
+you're leading through SWAG
+
+to advance mentorship
+
+and allyship
+
+across our industry.
+
+And thank you to everyone
+
+for joining us
+
+for this episode
+of The Change Makers.
+
+We hope today's conversation
+
+sparked a few ideas
+
+and showed how meaningful change
+
+often starts with people
+
+who are willing
+to take action.
+
+Be sure to join us
+
+for future episodes
+
+as we continue highlighting
+
+leaders and initiatives
+
+moving our industry forward.
+
+Thanks again,
+
+and we'll see you next time.</textarea>
+  </div>
+
+  <div style="display:flex;gap:0.75rem;">
+    <button id="startBtn">Start Teleprompter</button>
+    <button id="saveBtn">&#8681; Save Script</button>
+    <label id="loadLabel">&#8679; Load Script
+      <input type="file" id="loadFile" accept=".txt" style="display:none">
+    </label>
+  </div>
+</div>
+
+<!-- ══════════════ TELEPROMPTER SCREEN ══════════════ -->
+<div id="prompter">
+  <div id="scroll-container">
+    <div id="centre-line"></div>
+    <div id="scroll-content"></div>
+  </div>
+
+  <div id="controls">
+    <button class="ctrl-btn active" id="playBtn">&#9646;&#9646; Pause</button>
+
+    <div class="ctrl-sep"></div>
+
+    <div class="ctrl-group">
+      <span>Speed</span>
+      <input type="range" id="speedSlider" min="0.5" max="10" value="2" step="0.5">
+      <span id="speedVal">2</span>
+    </div>
+
+    <div class="ctrl-sep"></div>
+
+    <div class="ctrl-group">
+      <span>Font</span>
+      <input type="range" id="fontSlider" min="1" max="8" value="3" step="1">
+    </div>
+
+    <div class="ctrl-sep"></div>
+
+    <div class="ctrl-group">
+      <span>Margins</span>
+      <input type="range" id="marginSlider" min="0" max="45" value="10" step="1">
+      <span id="marginVal">10%</span>
+    </div>
+
+    <div class="ctrl-sep"></div>
+
+    <button class="ctrl-btn" id="micBtn">&#127908; Mic Sync</button>
+    <div class="ctrl-group" id="micGroup" style="display:none">
+      <span style="opacity:0.5;font-size:0.72rem">Hearing:</span>
+      <span id="micHeard" style="color:#4fc3f7;font-size:0.72rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+    </div>
+
+    <div class="ctrl-sep"></div>
+
+    <button class="ctrl-btn" id="resetBtn">&#8635; Restart</button>
+    <button class="ctrl-btn" id="fsBtn">&#x26F6; Fullscreen</button>
+    <button class="ctrl-btn" id="editBtn">&#9998; Edit Script</button>
+    <button class="ctrl-btn" id="hideCtrlBtn">&#x25BC; Hide Controls</button>
+
+    <span class="kbd-hint">Space = play/pause &nbsp;|&nbsp; &uarr;&darr; = speed &nbsp;|&nbsp; H = hide controls</span>
+  </div>
+</div>
+
+<script>
+  const FONT_SIZES = ['1.6rem', '2.2rem', '3rem', '4rem', '5.5rem', '7rem', '8.5rem', '10rem'];
+
+  /* ── State ── */
+  let playing = false;
+  let scrollY = 0;
+  let animId = null;
+  let lastTs = null;
+  let speed = 2;
+  let controlsVisible = true;
+
+  /* ── Elements ── */
+  const setupEl    = document.getElementById('setup');
+  const prompterEl = document.getElementById('prompter');
+  const content    = document.getElementById('scroll-content');
+  const controls   = document.getElementById('controls');
+  const playBtn    = document.getElementById('playBtn');
+  const speedSlider = document.getElementById('speedSlider');
+  const speedVal   = document.getElementById('speedVal');
+  const fontSlider = document.getElementById('fontSlider');
+  const resetBtn    = document.getElementById('resetBtn');
+  const fsBtn       = document.getElementById('fsBtn');
+  const editBtn     = document.getElementById('editBtn');
+  const hideCtrlBtn = document.getElementById('hideCtrlBtn');
+  const marginSlider= document.getElementById('marginSlider');
+  const marginVal   = document.getElementById('marginVal');
+
+  /* ── Build script HTML ── */
+  function buildScript() {
+    const s1 = document.getElementById('s1name').value.trim() || 'Speaker 1';
+    const s2 = document.getElementById('s2name').value.trim() || 'Speaker 2';
+    const raw = document.getElementById('script').value;
+
+    const s1re = new RegExp('^' + escRe(s1) + '\\s*:', 'i');
+    const s2re = new RegExp('^' + escRe(s2) + '\\s*:', 'i');
+
+    // Parse lines, inheriting the current speaker for untagged lines
+    const segments = [];
+    let currentSpeaker = null;
+    raw.split('\n').forEach(line => {
+      const trimmed = line.trim();
+      if (!trimmed) return;
+      let speaker, text;
+      if (s1re.test(trimmed)) {
+        speaker = 's1'; currentSpeaker = 's1';
+        text = trimmed.replace(s1re, '').trim();
+      } else if (s2re.test(trimmed)) {
+        speaker = 's2'; currentSpeaker = 's2';
+        text = trimmed.replace(s2re, '').trim();
+      } else {
+        speaker = currentSpeaker || 'narrator';
+        text = trimmed;
+      }
+      if (text) segments.push({ speaker, text });
+    });
+
+    // Group consecutive same-speaker lines into one block
+    let html = '';
+    let i = 0;
+    while (i < segments.length) {
+      const { speaker } = segments[i];
+      const lines = [];
+      while (i < segments.length && segments[i].speaker === speaker) {
+        lines.push(segments[i].text);
+        i++;
+      }
+      const tagName = speaker === 's1' ? s1 : speaker === 's2' ? s2 : null;
+      html += `<div class="block ${speaker}">`;
+      if (tagName) html += `<span class="speaker-tag">${esc(tagName)}</span>`;
+      html += lines.map(l => {
+        let modified = l.replace(/\[pause[^\]]*\]/gi, '<span class="pause">$&</span>');
+        return `<span class="line-text">${modified}</span>`;
+      }).join('');
+      html += `</div>`;
+    }
+
+    content.innerHTML = html || '<div class="block narrator"><span class="line-text">(no script entered)</span></div>';
+  }
+
+  function esc(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  function escRe(s) {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  /* ── Save / Load script ── */
+  document.getElementById('saveBtn').addEventListener('click', () => {
+    const text = document.getElementById('script').value;
+    const s1 = document.getElementById('s1name').value.trim() || 'script';
+    const blob = new Blob([text], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = s1 + '-teleprompter.txt';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  document.getElementById('loadFile').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      document.getElementById('script').value = ev.target.result;
+    };
+    reader.readAsText(file);
+    e.target.value = ''; // reset so same file can be reloaded
+  });
+
+  /* ── Start teleprompter ── */
+  document.getElementById('startBtn').addEventListener('click', () => {
+    buildScript();
+    buildBlockIndex();
+    setupEl.style.display = 'none';
+    prompterEl.style.display = 'flex';
+    scrollY = 0;
+    content.style.transform = 'translateY(0px)';
+    applyFont();
+    applyMargin();
+    startPlay();
+  });
+
+  /* ── Scroll loop ── */
+  function loop(ts) {
+    if (!lastTs) lastTs = ts;
+    const dt = ts - lastTs;
+    lastTs = ts;
+
+    // px per second = speed * 20
+    scrollY += (speed * 20 * dt) / 1000;
+
+    const maxScroll = content.scrollHeight - document.getElementById('scroll-container').clientHeight;
+    if (scrollY > maxScroll) { scrollY = maxScroll; setPlaying(false); }
+
+    content.style.transform = `translateY(-${scrollY}px)`;
+    if (playing) animId = requestAnimationFrame(loop);
+  }
+
+  function startPlay() { setPlaying(true); }
+
+  function setPlaying(val) {
+    playing = val;
+    if (playing) {
+      lastTs = null;
+      animId = requestAnimationFrame(loop);
+      playBtn.textContent = '⏸ Pause';
+      playBtn.classList.add('active');
+    } else {
+      if (animId) cancelAnimationFrame(animId);
+      playBtn.textContent = '▶ Play';
+      playBtn.classList.remove('active');
+    }
+  }
+
+  /* ── Controls ── */
+  playBtn.addEventListener('click', () => setPlaying(!playing));
+
+  speedSlider.addEventListener('input', () => {
+    speed = parseFloat(speedSlider.value);
+    speedVal.textContent = speedSlider.value;
+  });
+
+  fontSlider.addEventListener('input', applyFont);
+
+  function applyFont() {
+    const idx = parseInt(fontSlider.value) - 1;
+    content.style.fontSize = FONT_SIZES[idx];
+  }
+
+  marginSlider.addEventListener('input', applyMargin);
+
+  function applyMargin() {
+    const pct = marginSlider.value;
+    marginVal.textContent = pct + '%';
+    content.style.paddingLeft = pct + 'vw';
+    content.style.paddingRight = pct + 'vw';
+  }
+
+  resetBtn.addEventListener('click', () => {
+    scrollY = 0;
+    currentBlockIdx = 0;
+    finalBuffer = '';
+    content.style.transform = 'translateY(0px)';
+    if (!playing) setPlaying(true);
+  });
+
+  fsBtn.addEventListener('click', () => {
+    if (!document.fullscreenElement) {
+      prompterEl.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen();
+    }
+  });
+
+  document.addEventListener('fullscreenchange', () => {
+    fsBtn.textContent = document.fullscreenElement ? '✕ Exit Fullscreen' : '⛶ Fullscreen';
+  });
+
+  editBtn.addEventListener('click', () => {
+    setPlaying(false);
+    if (micActive) toggleMic();
+    prompterEl.style.display = 'none';
+    setupEl.style.display = 'flex';
+    if (document.fullscreenElement) document.exitFullscreen();
+  });
+
+  hideCtrlBtn.addEventListener('click', toggleControls);
+
+  function toggleControls() {
+    controlsVisible = !controlsVisible;
+    controls.classList.toggle('hidden', !controlsVisible);
+  }
+
+  /* ── Keyboard shortcuts ── */
+  document.addEventListener('keydown', e => {
+    if (prompterEl.style.display === 'none') return;
+
+    // Don't capture keys when typing in setup inputs
+    if (['INPUT','TEXTAREA'].includes(e.target.tagName)) return;
+
+    switch (e.key) {
+      case ' ':
+        e.preventDefault();
+        setPlaying(!playing);
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        speed = Math.min(10, speed + 0.5);
+        speedSlider.value = speed;
+        speedVal.textContent = speed;
+        break;
+      case 'ArrowDown':
+        e.preventDefault();
+        speed = Math.max(0.5, speed - 0.5);
+        speedSlider.value = speed;
+        speedVal.textContent = speed;
+        break;
+      case 'h': case 'H':
+        toggleControls();
+        break;
+      case 'r': case 'R':
+        scrollY = 0;
+        content.style.transform = 'translateY(0px)';
+        if (!playing) setPlaying(true);
+        break;
+      case 'f': case 'F':
+        fsBtn.click();
+        break;
+    }
+  });
+
+  /* ── Speech-to-text sync ── */
+  let micActive = false;
+  let recognition = null;
+  let scriptBlocks = [];
+  let currentBlockIdx = 0;
+  let finalBuffer = '';
+  let speechPauseTimer = null;
+
+  function buildBlockIndex() {
+    scriptBlocks = [];
+    currentBlockIdx = 0;
+    finalBuffer = '';
+    document.querySelectorAll('#scroll-content .block').forEach(el => {
+      const allText = Array.from(el.querySelectorAll('.line-text'))
+        .map(lt => lt.textContent).join(' ');
+      scriptBlocks.push({ words: normalizeWords(allText), el });
+    });
+  }
+
+  function normalizeWords(text) {
+    return text.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean);
+  }
+
+  function scoreMatch(heardWords, blockWords) {
+    if (!blockWords.length || !heardWords.length) return 0;
+    const blockSet = new Set(blockWords);
+    let hits = 0;
+    for (const w of heardWords) { if (blockSet.has(w)) hits++; }
+    return hits / Math.max(heardWords.length, blockWords.length);
+  }
+
+  function jumpToBlock(idx) {
+    const el = scriptBlocks[idx].el;
+    const container = document.getElementById('scroll-container');
+    scrollY = Math.max(0, el.offsetTop - container.clientHeight * 0.4);
+    content.style.transform = `translateY(-${scrollY}px)`;
+  }
+
+  function startRecognition() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      alert('Speech recognition requires Chrome or Edge.');
+      toggleMic();
+      return;
+    }
+    recognition = new SR();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    // Voice detected → resume scroll
+    recognition.onspeechstart = () => {
+      if (speechPauseTimer) { clearTimeout(speechPauseTimer); speechPauseTimer = null; }
+      setPlaying(true);
+    };
+
+    // Silence / pause → pause scroll after short delay (avoids flickering on brief gaps)
+    recognition.onspeechend = () => {
+      speechPauseTimer = setTimeout(() => { setPlaying(false); }, 700);
+    };
+
+    recognition.onresult = e => {
+      let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) finalBuffer += ' ' + t;
+        else interim = t;
+      }
+
+      // Use last ~15 words from confirmed + current interim
+      const heardWords = normalizeWords(finalBuffer + ' ' + interim).slice(-15);
+      if (!heardWords.length) return;
+
+      // Search forward up to 8 blocks from current position
+      const limit = Math.min(currentBlockIdx + 8, scriptBlocks.length);
+      let bestScore = 0.25;
+      let bestIdx = -1;
+      for (let i = currentBlockIdx; i < limit; i++) {
+        const score = scoreMatch(heardWords, scriptBlocks[i].words);
+        if (score > bestScore) { bestScore = score; bestIdx = i; }
+      }
+
+      if (bestIdx !== -1) {
+        currentBlockIdx = bestIdx;
+        jumpToBlock(bestIdx);
+        // Keep buffer from growing unboundedly
+        finalBuffer = normalizeWords(finalBuffer).slice(-30).join(' ');
+      }
+
+      const heardEl = document.getElementById('micHeard');
+      if (heardEl) heardEl.textContent = heardWords.slice(-6).join(' ');
+    };
+
+    recognition.onerror = e => {
+      if (e.error === 'not-allowed') {
+        alert('Microphone access was denied. Allow it in browser settings and try again.');
+        toggleMic();
+      }
+    };
+
+    // Auto-restart — browser stops recognition after ~60s of silence
+    recognition.onend = () => { if (micActive) recognition.start(); };
+
+    recognition.start();
+  }
+
+  function toggleMic() {
+    micActive = !micActive;
+    const micBtn = document.getElementById('micBtn');
+    const micGroup = document.getElementById('micGroup');
+    if (micActive) {
+      micBtn.textContent = '🎤 Mic On';
+      micBtn.classList.add('active');
+      micGroup.style.display = 'flex';
+      setPlaying(false); // mic now controls play/pause via voice activity
+      startRecognition();
+    } else {
+      micBtn.textContent = '🎤 Mic Sync';
+      micBtn.classList.remove('active');
+      micGroup.style.display = 'none';
+      if (speechPauseTimer) { clearTimeout(speechPauseTimer); speechPauseTimer = null; }
+      if (recognition) { recognition.onend = null; recognition.stop(); recognition = null; }
+      document.getElementById('micHeard').textContent = '';
+    }
+  }
+
+  document.getElementById('micBtn').addEventListener('click', toggleMic);
+</script>
+</body>
+</html>
+
+
