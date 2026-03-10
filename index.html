@@ -149,7 +149,8 @@
 
     #scroll-container {
       flex: 1;
-      overflow: hidden;
+      overflow-y: auto; /* show scrollbar */
+      overflow-x: hidden;
       position: relative;
     }
 
@@ -486,6 +487,7 @@ Thanks again, and we'll see you next time.</textarea>
   /* ── Elements ── */
   const setupEl    = document.getElementById('setup');
   const prompterEl = document.getElementById('prompter');
+  const container  = document.getElementById('scroll-container');
   const content    = document.getElementById('scroll-content');
   const controls   = document.getElementById('controls');
   const playBtn    = document.getElementById('playBtn');
@@ -588,7 +590,7 @@ Thanks again, and we'll see you next time.</textarea>
     setupEl.style.display = 'none';
     prompterEl.style.display = 'flex';
     scrollY = 0;
-    content.style.transform = 'translateY(0px)';
+    container.scrollTop = 0;
     applyFont();
     applyMargin();
     startPlay();
@@ -603,10 +605,10 @@ Thanks again, and we'll see you next time.</textarea>
     // px per second = speed * 20
     scrollY += (speed * 20 * dt) / 1000;
 
-    const maxScroll = content.scrollHeight - document.getElementById('scroll-container').clientHeight;
+    const maxScroll = content.scrollHeight - container.clientHeight;
     if (scrollY > maxScroll) { scrollY = maxScroll; setPlaying(false); }
 
-    content.style.transform = `translateY(-${scrollY}px)`;
+    container.scrollTop = scrollY;
     if (playing) animId = requestAnimationFrame(loop);
   }
 
@@ -641,6 +643,11 @@ Thanks again, and we'll see you next time.</textarea>
     content.style.fontSize = FONT_SIZES[idx];
   }
 
+  // sync scrollY if user manually scrolls
+  container.addEventListener('scroll', () => {
+    if (!playing) scrollY = container.scrollTop;
+  });
+
   marginSlider.addEventListener('input', applyMargin);
 
   function applyMargin() {
@@ -654,7 +661,7 @@ Thanks again, and we'll see you next time.</textarea>
     scrollY = 0;
     currentBlockIdx = 0;
     finalBuffer = '';
-    content.style.transform = 'translateY(0px)';
+    container.scrollTop = 0;
     if (!playing) setPlaying(true);
   });
 
@@ -756,9 +763,8 @@ Thanks again, and we'll see you next time.</textarea>
 
   function jumpToBlock(idx) {
     const el = scriptBlocks[idx].el;
-    const container = document.getElementById('scroll-container');
     scrollY = Math.max(0, el.offsetTop - container.clientHeight * 0.4);
-    content.style.transform = `translateY(-${scrollY}px)`;
+    container.scrollTop = scrollY;
   }
 
   function startRecognition() {
@@ -853,6 +859,7 @@ Thanks again, and we'll see you next time.</textarea>
 </script>
 </body>
 </html>
+
 
 
 
